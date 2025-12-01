@@ -1,14 +1,19 @@
-# SQL Agent
+# SQL & RAG Agent
 
-Agente SQL interativo que permite fazer perguntas em linguagem natural sobre uma base de dados SQLite usando LangChain e OpenAI. Disponível como CLI interativo ou API REST com FastAPI.
+Agentes interativos que permitem:
+
+- Fazer perguntas em linguagem natural sobre uma base de dados SQLite (agente **SQL**)
+- Fazer perguntas em linguagem natural sobre um documento da web usando RAG (agente **RAG**)
+
+Disponível como CLI interativo (apenas SQL) ou API REST com FastAPI (SQL + RAG).
 
 ## Vídeo no Youtube
 
 https://www.youtube.com/watch?v=wcAvGYcnK_M&t=4s
 
-## Descrição
+## Descrição (Agente SQL)
 
-Este projeto implementa um agente inteligente que:
+Este projeto implementa um agente SQL inteligente que:
 
 - Conecta-se à base de dados de exemplo Chinook (download automático)
 - Permite fazer perguntas em português sobre os dados
@@ -18,7 +23,28 @@ Este projeto implementa um agente inteligente que:
 O projeto está disponível em duas formas:
 
 - **CLI Interativo**: Script Python para uso via terminal
-- **API REST**: Servidor FastAPI com endpoints HTTP
+- **API REST**: Servidor FastAPI com endpoints HTTP (SQL + RAG)
+
+---
+
+## Descrição (Agente RAG)
+
+O agente RAG (Retrieval Augmented Generation) responde perguntas sobre o conteúdo do artigo:
+
+- **LLM Powered Autonomous Agents** – Lilian Weng  
+  (`https://lilianweng.github.io/posts/2023-06-23-agent/`)
+
+Ele funciona assim:
+
+1. **Indexação** (uma vez, automática):
+   - Faz o download da página do artigo
+   - Usa `BeautifulSoup` para extrair apenas título, cabeçalhos e conteúdo do post
+   - Corta o texto em vários _chunks_ menores
+   - Gera _embeddings_ com OpenAI e guarda num `InMemoryVectorStore`
+2. **Pergunta → Resposta**:
+   - Dada uma pergunta, o agente usa um _tool_ `retrieve_context` para buscar os _chunks_ mais relevantes
+   - Passa esse contexto para o modelo de chat da OpenAI
+   - O modelo responde usando o conteúdo do artigo como principal fonte de verdade
 
 ## Requisitos
 
@@ -46,8 +72,10 @@ pip install -r requirements.txt
 O ficheiro `requirements.txt` inclui todas as dependências necessárias:
 
 - FastAPI e Uvicorn (para a API)
-- LangChain e LangChain OpenAI (para o agente)
+- LangChain e LangChain OpenAI (para os agentes)
 - LangChain Community (para ferramentas SQL)
+- LangChain Text Splitters (para cortar documentos em _chunks_ para RAG)
+- BeautifulSoup4 (para extrair texto de HTML no RAG)
 - Requests (para download da base de dados)
 
 ## Configuração
@@ -100,11 +128,12 @@ A API estará disponível em `http://localhost:8000`
 
 **Endpoints disponíveis:**
 
-- `GET /` - Informações da API
+- `GET /` - Informações gerais da API (SQL + RAG)
 - `GET /health` - Health check
-- `POST /query` - Enviar perguntas ao agente SQL
+- `POST /query` - Enviar perguntas ao agente SQL (base de dados Chinook)
+- `POST /rag/query` - Enviar perguntas ao agente RAG (artigo da Lilian Weng)
 
-**Exemplo de uso com curl:**
+### Exemplo: agente SQL (endpoint `/query`)
 
 ```bash
 curl -X POST "http://localhost:8000/query" \
@@ -112,11 +141,27 @@ curl -X POST "http://localhost:8000/query" \
   -d '{"pergunta": "Quais são os 5 artistas com mais álbuns?"}'
 ```
 
-**Exemplo de resposta:**
+Resposta (exemplo):
 
 ```json
 {
   "resposta": "Os 5 artistas com mais álbuns são: ..."
+}
+```
+
+### Exemplo: agente RAG (endpoint `/rag/query`)
+
+```bash
+curl -X POST "http://localhost:8000/rag/query" \
+  -H "Content-Type: application/json" \
+  -d '{"pergunta": "What is task decomposition?"}'
+```
+
+Resposta (exemplo):
+
+```json
+{
+  "resposta": "Task decomposition refers to the process of breaking down a complex task into smaller, more manageable sub-tasks..."
 }
 ```
 
@@ -125,9 +170,9 @@ curl -X POST "http://localhost:8000/query" \
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
-## Exemplos de Uso
+## Exemplos de Uso – Agente SQL (CLI ou API)
 
-Após iniciar o script, podes fazer perguntas como:
+Após iniciar o agente SQL (CLI ou API), podes fazer perguntas como:
 
 - `Quais são as tabelas desta base de dados?`
 - `Quais são os 5 artistas com mais álbuns?`
@@ -143,6 +188,15 @@ O agente irá:
 - Executar a query
 - Retornar a resposta em linguagem natural
 
+## Exemplos de Uso – Agente RAG (API)
+
+Após iniciar a API, podes fazer perguntas como:
+
+- `What is task decomposition?`
+- `How does Chain-of-Thought (CoT) prompting work?`
+- `What is Tree-of-Thought (ToT) and how is it different from CoT?`
+- `What are some common techniques for task decomposition in LLM agents?`
+
 ## Como Sair
 
 Pressiona `CTRL+C` para terminar o programa.
@@ -153,17 +207,20 @@ Pressiona `CTRL+C` para terminar o programa.
 sql-agent/
 ├── app/
 │   ├── __init__.py
-│   ├── main.py              # Aplicação FastAPI principal
+│   ├── main.py              # Aplicação FastAPI principal (SQL + RAG)
 │   ├── agentes/
 │   │   ├── __init__.py
-│   │   └── sql_agent.py     # Classe SQLAgent (lógica do agente)
+│   │   ├── sql_agent.py     # Classe SQLAgent (lógica do agente SQL)
+│   │   └── rag_agent.py     # Classe RAGAgent (lógica do agente RAG)
 │   ├── ferramentas/
 │   │   ├── __init__.py
-│   │   └── database.py      # Configuração e download da base de dados
+│   │   ├── database.py      # Configuração e download da base de dados Chinook
+│   │   └── vector_store.py  # Indexação RAG (loader, splitter, vector store)
 │   └── rotas/
 │       ├── __init__.py
-│       └── query.py          # Endpoint POST /query
-├── sql_agent_cli.py         # Script CLI interativo
+│       ├── query.py         # Endpoint POST /query (SQL)
+│       └── rag.py           # Endpoint POST /rag/query (RAG)
+├── sql_agent_cli.py         # Script CLI interativo (apenas SQL)
 ├── requirements.txt         # Dependências do projeto
 ├── Chinook.db               # Base de dados (criada automaticamente)
 ├── README.md                # Este ficheiro
@@ -178,6 +235,9 @@ sql-agent/
 - **OpenAI GPT**: Modelo de linguagem para geração de SQL e respostas
 - **SQLite**: Base de dados relacional
 - **SQLDatabaseToolkit**: Toolkit do LangChain para interação com bases de dados SQL
+- **WebBaseLoader + BeautifulSoup4**: Carregamento e extração de conteúdo HTML para RAG
+- **RecursiveCharacterTextSplitter**: Splitter de texto para criar _chunks_ de documentos
+- **InMemoryVectorStore + OpenAIEmbeddings**: Vector store em memória para busca semântica no RAG
 
 ## Notas
 

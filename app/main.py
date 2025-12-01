@@ -2,11 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.rotas.query import router as query_router
+from app.rotas.rag import router as rag_router
 
 
 app = FastAPI(
-    title="SQL Agent API",
-    description="API para fazer perguntas em linguagem natural a uma base de dados SQL usando LangChain e OpenAI.",
+    title="SQL & RAG Agent API",
+    description="API para fazer perguntas em linguagem natural a uma base de dados SQL e a documentos usando LangChain e OpenAI.",
     version="1.0.0",
 )
 
@@ -21,6 +22,7 @@ app.add_middleware(
 
 # Incluir rotas
 app.include_router(query_router)
+app.include_router(rag_router)
 
 
 @app.get("/")
@@ -29,13 +31,19 @@ async def root():
     Endpoint raiz com informações da API.
     """
     return {
-        "message": "SQL Agent API",
-        "descricao": "Faça perguntas em linguagem natural sobre a base de dados Chinook.",
+        "message": "SQL & RAG Agent API",
+        "descricao": "Faça perguntas em linguagem natural sobre a base de dados Chinook ou sobre documentos.",
         "endpoints": {
-            "POST /query": "Envie uma pergunta e receba a resposta do agente SQL."
+            "POST /query": "Envie uma pergunta e receba a resposta do agente SQL.",
+            "POST /rag/query": "Envie uma pergunta e receba a resposta do agente RAG (sobre documentos)."
         },
-        "exemplo": {
-            "pergunta": "Quais são os 5 artistas com mais álbuns?"
+        "exemplos": {
+            "sql": {
+                "pergunta": "Quais são os 5 artistas com mais álbuns?"
+            },
+            "rag": {
+                "pergunta": "What is task decomposition?"
+            }
         }
     }
 

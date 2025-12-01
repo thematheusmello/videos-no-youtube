@@ -1,2 +1,4 @@
 sql-agent.mp4
 transcription.srt
+**__pycache__**/
+*.pyc
